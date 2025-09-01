@@ -16,7 +16,7 @@ if (( $+commands[eza] )); then
 
   eza_params=(
     '--git' '--icons=always' '--group' '--group-directories-first'
-    '--time-style=long-iso' '--color-scale=all' '--color=always --hyperlink'
+    '--time-style=long-iso' '--color-scale=all' '--color=always' '--hyperlink'
   )
 
   [[ ! -z $_EZA_PARAMS ]] && eza_params=($_EZA_PARAMS)
