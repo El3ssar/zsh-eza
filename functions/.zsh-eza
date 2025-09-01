@@ -1,103 +1,115 @@
-# zsh-eza plugin (clean, modular)
 # -*- mode: zsh; sh-indentation: 2; indent-tabs-mode: nil; sh-basic-offset: 2; -*-
 # vim: ft=zsh sw=2 ts=2 et
+#
+# Copyright (c) 2022 Salvydas Lukosius
 
-# Early exits
-[[ $TERM == 'dumb' ]] && return 1
-(( ! $+commands[eza] )) && { print -u2 "zsh-eza: 'eza' not found."; return 1; }
-
-# Safe zsh emulation for functions/locals
-emulate -L zsh
-
-# Options (quiet globals; nice globbing)
-setopt extended_glob warn_create_global typeset_silent
-
-# Resolve a pager: prefer batcat, then bat, else none
-typeset -g BAT_CMD=""
-if (( $+commands[batcat] )); then
-  BAT_CMD="batcat"
-elif (( $+commands[bat] )); then
-  BAT_CMD="bat"
+if [[ $TERM == 'dumb' ]]; then
+  return 1
 fi
 
-# Base eza parameters (array-safe)
-typeset -ga eza_params
-eza_params=(
-  --git --icons=always --group --group-directories-first
-  --time-style=long-iso --color-scale=all --color=always --hyperlink
-)
+builtin emulate -L zsh ${=${options[xtrace]:#off}:+-o xtrace}
+builtin setopt extended_glob warn_create_global typeset_silent
 
-# Allow override via space-separated string in _EZA_PARAMS, if user/exported
-# Example: export _EZA_PARAMS="--icons=auto --no-git"
-[[ -n ${_EZA_PARAMS:-} ]] && eza_params=(${=_EZA_PARAMS})
+if (( $+commands[eza] )); then
+  typeset enable_autocd=0
+  typeset -ag eza_params
+
+  eza_params=(
+    '--git' '--icons=always' '--group' '--group-directories-first'
+    '--time-style=long-iso' '--color-scale=all' '--color=always --hyperlink'
+  )
+
+  [[ ! -z $_EZA_PARAMS ]] && eza_params=($_EZA_PARAMS)
 
 
-# Avoid alias recursion if user had aliases
-unalias ls l ll llm la lx lt tree 2>/dev/null || true
+  # alias ls='if [[ -z $1 ]]; then COLUMNS=$(tput cols) eza $eza_params | batcat --plain; else COLUMNS=$(tput cols) eza $eza_params "$1"; fi'
 
-# ---- Internals -------------------------------------------------------------
+  ############# CUSTOM functions for ls, l, ll, llm, la, lx, lt, tree #############
 
-# Core runner (handles width and eza invocation)
-_eza() {
-  local -a params; params=( "${eza_params[@]}" "$@" )
-  COLUMNS=$(tput cols) command eza "${params[@]}"
-}
+  unalias ls 2>/dev/null  # Remove any existing alias for ls, if it exists
 
-# Pipe to bat if available; else pass-through
-_pipe_or_cat() {
-  if [[ -n $BAT_CMD ]]; then
-    command "$BAT_CMD" --plain
-  else
-    command cat
+  function ls() {
+    if [[ $# -eq 0 ]]; then
+      # No arguments, list current directory with eza and batcat
+      COLUMNS=$(tput cols) eza $eza_params | batcat --plain
+    else
+      # Argument(s) passed, list the file or directory
+      COLUMNS=$(tput cols) eza $eza_params "$@"
+    fi
+  }
+
+  # Remove existing aliases
+  unalias l ll llm la lx lt tree 2>/dev/null
+
+  # Function for `l` alias
+  function l() {
+    if [[ $# -eq 0 ]]; then
+      COLUMNS=$(tput cols) eza --git-ignore $eza_params | batcat --plain
+    else
+      COLUMNS=$(tput cols) eza --git-ignore $eza_params "$@"
+    fi
+  }
+
+  # Function for `ll` alias
+  function ll() {
+    if [[ $# -eq 0 ]]; then
+      COLUMNS=$(tput cols) eza --all --header --long $eza_params | batcat --plain
+    else
+      COLUMNS=$(tput cols) eza --all --header --long $eza_params "$@"
+    fi
+  }
+
+  # Function for `llm` alias
+  function llm() {
+    if [[ $# -eq 0 ]]; then
+      COLUMNS=$(tput cols) eza --all --header --long --sort=modified $eza_params | batcat --plain
+    else
+      COLUMNS=$(tput cols) eza --all --header --long --sort=modified $eza_params "$@"
+    fi
+  }
+
+  # Function for `la` alias
+  function la() {
+    if [[ $# -eq 0 ]]; then
+      COLUMNS=$(tput cols) eza $eza_params -a --color=always | batcat --plain
+    else
+      COLUMNS=$(tput cols) eza $eza_params -a --color=always "$@"
+    fi
+  }
+
+  # `lx` function does not expect an argument, so no changes
+  alias lx='COLUMNS=$(tput cols) eza -lbhHigUmuSa@ --color=always | batcat --plain'
+
+  # `lt` function for tree view
+  alias lt='COLUMNS=$(tput cols) eza --tree $eza_params | batcat --plain'
+
+  # `tree` function for tree view
+  alias tree='COLUMNS=$(tput cols) eza --tree $eza_params | batcat --plain'
+
+  ############# END CUSTOM functions for ls, l, ll, llm, la, lx, lt, tree #############
+
+
+
+  ############# ALIASES #############
+
+  # alias ls='COLUMNS=$(tput cols) eza $eza_params | batcat --plain'
+  # alias l='COLUMNS=$(tput cols) eza --git-ignore $eza_params | batcat --plain'
+  # alias ll='COLUMNS=$(tput cols) eza --all --header --long $eza_params | batcat --plain'
+  # alias llm='COLUMNS=$(tput cols) eza --all --header --long --sort=modified $eza_params | batcat --plain'
+  # alias la='COLUMNS=$(tput cols) eza $eza_params -a --color=always | batcat --plain'
+  # alias lx='COLUMNS=$(tput cols) eza -lbhHigUmuSa@ --color=always | batcat --plain'
+  # alias lt='COLUMNS=$(tput cols) eza --tree $eza_params | batcat --plain'
+  # alias tree='COLUMNS=$(tput cols) eza --tree $eza_params | batcat --plain'
+
+  [[ "$AUTOCD" = <-> ]] && enable_autocd="$AUTOCD"
+  if [[ "$enable_autocd" == "1" ]]; then
+    # Function for cd auto list directories
+    →auto-eza() { command eza $eza_params; }
+    [[ $chpwd_functions[(r)→auto-eza] == →auto-eza ]] || chpwd_functions=( →auto-eza $chpwd_functions )
   fi
-}
-
-# Helper to DRY the “no-args => pretty pager, args => raw” pattern
-# usage: _list "<extra flags...>" -- "$@"
-_list() {
-  local -a extra argv
-  # Split at literal -- into extra and argv
-  integer i sep=-1
-  for (( i=1; i<=$#; ++i )); do
-    [[ ${@[i]} == "--" ]] && { sep=$i; break; }
-  done
-  if (( sep > 0 )); then
-    extra=("${@[1,$((sep-1))]}")
-    argv=("${@[$((sep+1)),-1]}")
-  else
-    extra=("$@")
-    argv=()
-  fi
-
-  if (( $#argv == 0 )); then
-    _eza "${extra[@]}" | _pipe_or_cat
-  else
-    _eza "${extra[@]}" "${argv[@]}"
-  fi
-}
-
-# ---- Public commands -------------------------------------------------------
-
-# Plain ls: pretty when no args, raw when args
-ls()  { _list -- "$@"; }
-
-# Common variants
-l()   { _list --git-ignore -- "$@"; }
-ll()  { _list --all --header --long -- "$@"; }
-llm() { _list --all --header --long --sort=modified -- "$@"; }
-la()  { _list -a --color=always -- "$@"; }
-
-# Always tree/extended lists go through pager for readability
-lx()  { _eza -lbhHigUmuSa@ --color=always | _pipe_or_cat; }
-lt()  { _eza --tree                         | _pipe_or_cat; }
-tree(){ _eza --tree                         | _pipe_or_cat; }
-
-# Optional: auto list on cd if AUTOCD=1
-#   export AUTOCD=1
-if [[ ${AUTOCD:-0} == 1 ]]; then
-  autoload -Uz add-zsh-hook
-  eza_chpwd() { command eza "${eza_params[@]}"; }
-  add-zsh-hook chpwd eza_chpwd
+else
+  print "Please install eza before using this plugin." >&2
+  return 1
 fi
 
 return 0
