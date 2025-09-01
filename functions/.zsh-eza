@@ -4,8 +4,7 @@
 # Copyright (c) 2022 Salvydas Lukosius
 
 if [[ $TERM == 'dumb' ]]; then
-  print "Dumb/non-tty terminal detected, skipping loading zsh-eza"
-  return 0
+  return 1
 fi
 
 builtin emulate -L zsh ${=${options[xtrace]:#off}:+-o xtrace}
@@ -16,26 +15,96 @@ if (( $+commands[eza] )); then
   typeset -ag eza_params
 
   eza_params=(
-    '--git' '--icons' '--group' '--group-directories-first'
-    '--time-style=long-iso' '--color-scale=all'
+    '--git' '--icons=always' '--group' '--group-directories-first'
+    '--time-style=long-iso' '--color-scale=all' '--color=always'
   )
 
   [[ ! -z $_EZA_PARAMS ]] && eza_params=($_EZA_PARAMS)
 
-  alias ls='eza $eza_params'
-  alias l='eza --git-ignore $eza_params'
-  alias ll='eza --all --header --long $eza_params'
-  alias llm='eza --all --header --long --sort=modified $eza_params'
-  alias la='eza -lbhHigUmuSa'
-  alias lx='eza -lbhHigUmuSa@'
-  alias lt='eza --tree $eza_params'
-  alias tree='eza --tree $eza_params'
+
+  # alias ls='if [[ -z $1 ]]; then COLUMNS=$(tput cols) eza $eza_params | batcat --plain; else COLUMNS=$(tput cols) eza $eza_params "$1"; fi'
+
+  ############# CUSTOM functions for ls, l, ll, llm, la, lx, lt, tree #############
+
+  unalias ls 2>/dev/null  # Remove any existing alias for ls, if it exists
+
+  function ls() {
+    if [[ $# -eq 0 ]]; then
+      # No arguments, list current directory with eza and batcat
+      COLUMNS=$(tput cols) eza $eza_params | batcat --plain
+    else
+      # Argument(s) passed, list the file or directory
+      COLUMNS=$(tput cols) eza $eza_params "$@"
+    fi
+  }
+
+  # Remove existing aliases
+  unalias l ll llm la lx lt tree 2>/dev/null
+
+  # Function for `l` alias
+  function l() {
+    if [[ $# -eq 0 ]]; then
+      COLUMNS=$(tput cols) eza --git-ignore $eza_params | batcat --plain
+    else
+      COLUMNS=$(tput cols) eza --git-ignore $eza_params "$@"
+    fi
+  }
+
+  # Function for `ll` alias
+  function ll() {
+    if [[ $# -eq 0 ]]; then
+      COLUMNS=$(tput cols) eza --all --header --long $eza_params | batcat --plain
+    else
+      COLUMNS=$(tput cols) eza --all --header --long $eza_params "$@"
+    fi
+  }
+
+  # Function for `llm` alias
+  function llm() {
+    if [[ $# -eq 0 ]]; then
+      COLUMNS=$(tput cols) eza --all --header --long --sort=modified $eza_params | batcat --plain
+    else
+      COLUMNS=$(tput cols) eza --all --header --long --sort=modified $eza_params "$@"
+    fi
+  }
+
+  # Function for `la` alias
+  function la() {
+    if [[ $# -eq 0 ]]; then
+      COLUMNS=$(tput cols) eza $eza_params -a --color=always | batcat --plain
+    else
+      COLUMNS=$(tput cols) eza $eza_params -a --color=always "$@"
+    fi
+  }
+
+  # `lx` function does not expect an argument, so no changes
+  alias lx='COLUMNS=$(tput cols) eza -lbhHigUmuSa@ --color=always | batcat --plain'
+
+  # `lt` function for tree view
+  alias lt='COLUMNS=$(tput cols) eza --tree $eza_params | batcat --plain'
+
+  # `tree` function for tree view
+  alias tree='COLUMNS=$(tput cols) eza --tree $eza_params | batcat --plain'
+
+  ############# END CUSTOM functions for ls, l, ll, llm, la, lx, lt, tree #############
+
+
+
+  ############# ALIASES #############
+
+  # alias ls='COLUMNS=$(tput cols) eza $eza_params | batcat --plain'
+  # alias l='COLUMNS=$(tput cols) eza --git-ignore $eza_params | batcat --plain'
+  # alias ll='COLUMNS=$(tput cols) eza --all --header --long $eza_params | batcat --plain'
+  # alias llm='COLUMNS=$(tput cols) eza --all --header --long --sort=modified $eza_params | batcat --plain'
+  # alias la='COLUMNS=$(tput cols) eza $eza_params -a --color=always | batcat --plain'
+  # alias lx='COLUMNS=$(tput cols) eza -lbhHigUmuSa@ --color=always | batcat --plain'
+  # alias lt='COLUMNS=$(tput cols) eza --tree $eza_params | batcat --plain'
+  # alias tree='COLUMNS=$(tput cols) eza --tree $eza_params | batcat --plain'
 
   [[ "$AUTOCD" = <-> ]] && enable_autocd="$AUTOCD"
   if [[ "$enable_autocd" == "1" ]]; then
     # Function for cd auto list directories
     →auto-eza() { command eza $eza_params; }
-    typeset -g chpwd_functions
     [[ $chpwd_functions[(r)→auto-eza] == →auto-eza ]] || chpwd_functions=( →auto-eza $chpwd_functions )
   fi
 else
@@ -44,3 +113,4 @@ else
 fi
 
 return 0
+
