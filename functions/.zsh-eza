@@ -14,8 +14,11 @@ setopt extended_glob warn_create_global typeset_silent
 
 # Resolve a pager: prefer batcat, then bat, else none
 typeset -g BAT_CMD=""
-(( $+commands[batcat] )) && BAT_CMD="batcat"
-(( -z $BAT_CMD && $+commands[bat] )) && BAT_CMD="bat"
+if (( $+commands[batcat] )); then
+  BAT_CMD="batcat"
+elif (( $+commands[bat] )); then
+  BAT_CMD="bat"
+fi
 
 # Base eza parameters (array-safe)
 typeset -ga eza_params
