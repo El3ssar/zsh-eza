@@ -108,8 +108,14 @@ if (( $+commands[eza] )); then
     [[ $chpwd_functions[(r)→auto-eza] == →auto-eza ]] || chpwd_functions=( →auto-eza $chpwd_functions )
   fi
 else
-  print "Please install eza before using this plugin." >&2
-  return 1
+  print "Plugin zhs-eza: 'eza' not found; using plain ls. Install 'eza' and add it to PATH" >&2
+  # define harmless fallbacks so the rest of your config doesn’t break
+  alias ls='ls --color=auto'
+  alias l='ls -CF'
+  alias ll='ls -alF'
+  alias la='ls -A'
+  alias tree='command tree'   # if tree exists; otherwise omit
 fi
+
 
 return 0
