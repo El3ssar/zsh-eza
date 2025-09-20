@@ -12,9 +12,9 @@ builtin setopt extended_glob warn_create_global typeset_silent
 
 # pick batcat if available, otherwise bat
 if command -v batcat &>/dev/null; then
-  __bat="batcat"
+  typeset -g __bat="batcat"
 else
-  __bat="bat"
+  typeset -g __bat="bat"
 fi
 
 
