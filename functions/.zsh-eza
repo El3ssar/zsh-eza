@@ -34,56 +34,64 @@ if (( $+commands[eza] )); then
 
   ############# CUSTOM functions for ls, l, ll, llm, la, lx, lt, tree #############
 
-  unalias ls 2>/dev/null  # Remove any existing alias for ls, if it exists
-
-  function ls() {
-    if [[ $# -eq 0 ]]; then
-      # No arguments, list current directory with eza and batcat
-      COLUMNS=$(tput cols) eza $eza_params | $__bat --plain
+  # Common smart-paging function
+  __smart_page() {
+    local cols lines out count
+    cols=$(tput cols)
+    lines=$(tput lines)
+    out=$(COLUMNS=$cols "$@")
+    count=$(printf '%s\n' "$out" | sed 's/\x1B\[[0-9;]*[A-Za-z]//g' | wc -l)
+    if (( count > lines )); then
+      printf '%s\n' "$out" | ov --quit-if-one-screen
     else
-      # Argument(s) passed, list the file or directory
-      COLUMNS=$(tput cols) eza $eza_params "$@"
+      printf '%s\n' "$out"
     fi
   }
 
   # Remove existing aliases
   unalias l ll llm la lx lt tree 2>/dev/null
 
-  # Function for `l` alias
+  # ls variants
+  function ls() {
+    if [[ $# -eq 0 ]]; then
+      __smart_page eza $eza_params
+    else
+      COLUMNS=$(tput cols) eza $eza_params "$@"
+    fi
+  }
+
   function l() {
     if [[ $# -eq 0 ]]; then
-      COLUMNS=$(tput cols) eza --git-ignore $eza_params | $__bat --plain
+      __smart_page eza --git-ignore $eza_params
     else
       COLUMNS=$(tput cols) eza --git-ignore $eza_params "$@"
     fi
   }
 
-  # Function for `ll` alias
   function ll() {
     if [[ $# -eq 0 ]]; then
-      COLUMNS=$(tput cols) eza --all --header --long $eza_params | $__bat --plain
+      __smart_page eza --all --header --long $eza_params
     else
       COLUMNS=$(tput cols) eza --all --header --long $eza_params "$@"
     fi
   }
 
-  # Function for `llm` alias
   function llm() {
     if [[ $# -eq 0 ]]; then
-      COLUMNS=$(tput cols) eza --all --header --long --sort=modified $eza_params | $__bat --plain
+      __smart_page eza --all --header --long --sort=modified $eza_params
     else
       COLUMNS=$(tput cols) eza --all --header --long --sort=modified $eza_params "$@"
     fi
   }
 
-  # Function for `la` alias
   function la() {
     if [[ $# -eq 0 ]]; then
-      COLUMNS=$(tput cols) eza $eza_params -a --color=always | $__bat --plain
+      __smart_page eza $eza_params -a --color=always
     else
       COLUMNS=$(tput cols) eza $eza_params -a --color=always "$@"
     fi
   }
+
 
   # `lx` function does not expect an argument, so no changes
   alias lx='COLUMNS=$(tput cols) eza -lbhHigUmuSa@ --color=always | $__bat --plain'
