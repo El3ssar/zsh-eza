@@ -92,15 +92,45 @@ if (( $+commands[eza] )); then
     fi
   }
 
+  function lx() {
+    local cols lines out count
+    cols=$(tput cols)
+    lines=$(tput lines)
+    out=$(COLUMNS=$cols eza -lbhHigUmuSa@ --color=always)
+    count=$(printf '%s\n' "$out" | sed 's/\x1B\[[0-9;]*[A-Za-z]//g' | wc -l)
+    if (( count > lines )); then
+      printf '%s\n' "$out" | ov --quit-if-one-screen
+    else
+      printf '%s\n' "$out"
+    fi
+  }
 
-  # `lx` function does not expect an argument, so no changes
-  alias lx='COLUMNS=$(tput cols) eza -lbhHigUmuSa@ --color=always | $__bat --plain'
+  function lt() {
+    local cols lines out count
+    cols=$(tput cols)
+    lines=$(tput lines)
+    out=$(COLUMNS=$cols eza --tree $eza_params)
+    count=$(printf '%s\n' "$out" | sed 's/\x1B\[[0-9;]*[A-Za-z]//g' | wc -l)
+    if (( count > lines )); then
+      printf '%s\n' "$out" | ov --quit-if-one-screen
+    else
+      printf '%s\n' "$out"
+    fi
+  }
 
-  # `lt` function for tree view
-  alias lt='COLUMNS=$(tput cols) eza --tree $eza_params | $__bat --plain'
+  function tree() {
+    local cols lines out count
+    cols=$(tput cols)
+    lines=$(tput lines)
+    out=$(COLUMNS=$cols eza --tree $eza_params)
+    count=$(printf '%s\n' "$out" | sed 's/\x1B\[[0-9;]*[A-Za-z]//g' | wc -l)
+    if (( count > lines )); then
+      printf '%s\n' "$out" | ov --quit-if-one-screen
+    else
+      printf '%s\n' "$out"
+    fi
+  }
 
-  # `tree` function for tree view
-  alias tree='COLUMNS=$(tput cols) eza --tree $eza_params | $__bat --plain'
 
   ############# END CUSTOM functions for ls, l, ll, llm, la, lx, lt, tree #############
 
