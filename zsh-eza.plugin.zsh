@@ -69,3 +69,6 @@
     } || return $?
   fi
 } "${ZERO:-${${0:#$ZSH_ARGZERO}:-${(%):-%N}}}"
+
+# El3ssar customs: listing functions with smart paging (see customs.zsh)
+builtin source "${${(%):-%x}:A:h}/customs.zsh"
